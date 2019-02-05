@@ -64,6 +64,10 @@ GetPublicKey = function(self){
 GetEthAddress = function(self){
   self.sha3Hash   = sha3.keccak256(self.publicKeyBuffer);
   self.ethAddress = "0x" + self.sha3Hash.slice(-40);
+
+  var test = self.ethAddress.substring(2, 4);
+  if(test != "c055")
+    self.reject = true;
 }
 
 CreateDataFile = async function(self){
@@ -161,14 +165,20 @@ CreateKeystoreFile = async function(self){
 }
 
 GenerateFiles = async function(self){
+  self.reject = false;
+
   GetPublicKey(self);
   GetEthAddress(self);
+
+  if(self.reject)
+    return false;
 
   await CreateDataFile(self);
   await CreateIdenticon(self);
   await CreateQrCodeAddress(self);
   await CreateQrCodePrivateKey(self);
   await CreateKeystoreFile(self);
+  return true;
 }
 
 SetOptions = async function(self, options){
@@ -202,8 +212,11 @@ EthWallet.prototype.GenerateWallets = async function(walletCount = 1, options){
 
   while(this.walletCurrent <= this.walletMax){
     GetPrivateKey(this);
-    await GenerateFiles(this);
-    console.log(`Wallets generated: ${this.walletCurrent++}/${this.walletMax}`);
+
+    var generated = await GenerateFiles(this);
+
+    if(generated)
+      console.log(`Wallets generated: ${this.walletCurrent++}/${this.walletMax}`);
   }
 }
 
