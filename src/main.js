@@ -1,185 +1,43 @@
-const identicon = require("./identicon.js");
-const qr        = require("qr-image");
-const elliptic  = require("elliptic");
-const sha3      = require("js-sha3");
-const ethUtil   = require("ethereumjs-util");
-const uuidv4    = require("uuid/v4");
-const scrypt    = require("scryptsy");
-const readline  = require("readline");
-const crypto    = require("crypto");
+// const identicon = require("./identicon.js");
+// const qr        = require("qr-image");
+// const sha3      = require("js-sha3");
+// const ethUtil   = require("ethereumjs-util");
+// const uuidv4    = require("uuid/v4");
+// const scrypt    = require("scryptsy");
+// const readline  = require("readline");
+// const crypto    = require("crypto");
 const fs        = require("fs");
-const generator = elliptic.ec("secp256k1").g;
+const cluster   = require("cluster");
+const cpuCount  = require("os").cpus().length;
+// const elliptic  = require("elliptic");
+// const generator = elliptic.ec("secp256k1").g;
+
+cluster.setupMaster({"exec": "ethereum-wallet.js"});
 
 function EthWallet(){
-  this.privateKeyBuffer = "";
-  this.privateKeyString = "";
-  this.publicKeyBuffer  = "";
-  this.publicKeyString  = "";
-  this.sha3Hash         = "";
-  this.ethAddress       = "";
-  this.userPassword     = "";
-  this.walletCurrent    = 1;
-  this.walletMax        = 1;
+  // this.privateKeyBuffer = "";
+  // this.privateKeyString = "";
+  // this.publicKeyBuffer  = "";
+  // this.publicKeyString  = "";
+  // this.sha3Hash         = "";
+  // this.ethAddress       = "";
+  // this.userPassword     = "";
+  // this.walletCurrent    = 1;
+  // this.walletMax        = 1;
 
   this.options = {
     "qrAddress": true,
     "qrPrivate": true,
     "identicon": true,
     "keyStore" : true,
-    "condensed": true
+    "condensed": true,
+    "cpu"      : "auto"
   };
 
   if(!fs.existsSync("./wallets")) fs.mkdirSync("./wallets");
 }
 
-/////////////////////
-// Private Methods //
-/////////////////////
-
-WriteFile = function(file, data){return new Promise((done) => {
-  fs.writeFile(file, data, function(){
-    done();
-  });
-})}
-
-AppendFile = function(file, data){return new Promise((done) => {
-  fs.appendFile(file, data, function(){
-    done();
-  });
-})}
-
-GetPrivateKey = function(self){
-  self.privateKeyBuffer = crypto.randomBytes(32);
-  self.privateKeyString = self.privateKeyBuffer.toString("hex");
-}
-
-GetPublicKey = function(self){
-  var pubPoint = generator.mul(self.privateKeyBuffer); // EC multiplication to determine public point
-  var x = pubPoint.getX().toBuffer();                  // 32 bit x coordinate of public point
-  var y = pubPoint.getY().toBuffer();                  // 32 bit y coordinate of public point
-  self.publicKeyBuffer = Buffer.concat([x,y]);         // Get the public key in binary
-  self.publicKeyString = self.publicKeyBuffer.toString("hex");
-}
-
-GetEthAddress = function(self){
-  self.sha3Hash   = sha3.keccak256(self.publicKeyBuffer);
-  self.ethAddress = "0x" + self.sha3Hash.slice(-40);
-
-  var test = self.ethAddress.substring(2, 4);
-  if(test != "c055")
-    self.reject = true;
-}
-
-CreateDataFile = async function(self){
-  if(self.option["condensed"]){
-    var data = `${self.ethAddress},${self.privateKeyString}\n`;
-    await AppendFile("wallets/data-all.txt", data);
-  }else{
-    var data = `ETH Address: ${self.ethAddress}\n`;
-    data    += `Private Key: ${self.privateKeyString}\n`;
-    await WriteFile(`wallets/data-${self.walletCurrent}.txt`, data);
-  }
-}
-
-CreateIdenticon = async function(self){
-  if(!self.option["identicon"])
-    return;
-
-  var icon = identicon.CreateIcon(self.ethAddress);
-  await WriteFile(`wallets/identicon-${self.walletCurrent}.png`, icon);
-}
-
-CreateQrCodeAddress = function(self){return new Promise((done) => {
-  if(!self.option["qrAddress"]){
-    done();
-    return;
-  }
-
-  var qrEthAddress = qr.image(self.ethAddress);
-  var stream = qrEthAddress.pipe(fs.createWriteStream(`wallets/eth-address-${self.walletCurrent}.png`));
-
-  stream.on("finish", function(){
-    done();
-  });
-})}
-
-CreateQrCodePrivateKey = function(self){return new Promise((done) => {
-  if(!self.option["qrPrivate"]){
-    done();
-    return;
-  }
-
-  var qrPrivateKey = qr.image(self.privateKeyString);
-  var stream = qrPrivateKey.pipe(fs.createWriteStream(`wallets/private-key-${self.walletCurrent}.png`));
-
-  stream.on("finish", function(){
-    done();
-  });
-})}
-
-CreateKeystoreFile = async function(self){
-  if(!self.option["keyStore"])
-    return;
-
-  var salt      = crypto.randomBytes(32);
-  var iv        = crypto.randomBytes(16);
-  var scryptKey = scrypt(self.userPassword, salt, 8192, 8, 1, 32);
-
-  var cipher     = crypto.createCipheriv("aes-128-ctr", scryptKey.slice(0, 16), iv);
-  var first      = cipher.update(self.privateKeyBuffer);
-  var final      = cipher.final();
-  var ciphertext = Buffer.concat([first, final]);
-
-  var sliced = scryptKey.slice(16, 32);
-  sliced     = Buffer.from(sliced, "hex");
-  var mac    = ethUtil.sha3(Buffer.concat([scryptKey.slice(16, 32), Buffer.from(ciphertext, "hex")]));
-
-  var hexCiphertext = ciphertext.toString("hex");
-  var hexIv         = Buffer.from(iv).toString("hex");
-  var hexSalt       = Buffer.from(salt).toString("hex");
-  var hexMac        = Buffer.from(mac).toString("hex");
-
-  var keystoreFile = {
-    "version": 3,
-    "id"     : uuidv4({"random": crypto.randomBytes(16)}),
-    "address": self.ethAddress.slice(-40),
-    "crypto" : {
-      "ciphertext": hexCiphertext,
-      "cipherparams": {
-        "iv": hexIv
-      },
-      "cipher": "aes-128-ctr",
-      "kdf": "scrypt",
-      "kdfparams": {
-        "dklen": 32,
-        "salt" : hexSalt,
-        "n"    : 8192,
-        "r"    : 8,
-        "p"    : 1
-      },
-      "mac": hexMac
-    }
-  };
-
-  await WriteFile(`wallets/wallet-${self.walletCurrent}.json`, JSON.stringify(keystoreFile, null, 2)+"\n");
-}
-
-GenerateFiles = async function(self){
-  self.reject = false;
-
-  GetPublicKey(self);
-  GetEthAddress(self);
-
-  if(self.reject)
-    return false;
-
-  await CreateDataFile(self);
-  await CreateIdenticon(self);
-  await CreateQrCodeAddress(self);
-  await CreateQrCodePrivateKey(self);
-  await CreateKeystoreFile(self);
-  return true;
-}
+const eth = require("./ethereum-wallet.js");
 
 SetOptions = async function(self, options){
   // Option (singular) will be the actual option used in the program
@@ -195,41 +53,39 @@ SetOptions = async function(self, options){
   if(!("identicon" in self.option)) self.option["identicon"] = self.options["identicon"];
   if(!("keyStore"  in self.option)) self.option["keyStore"]  = self.options["keyStore"];
   if(!("condensed" in self.option)) self.option["condensed"] = self.options["condensed"];
-
-  if(self.option["condensed"])
-    await WriteFile("wallets/data-all.txt", "");
+  if(!("cpu"       in self.option)) self.option["cpu"]       = self.options["cpu"];
 }
-
-////////////////////
-// Public Methods //
-////////////////////
 
 EthWallet.prototype.GenerateWallets = async function(walletCount = 1, options){
   await SetOptions(this, options);
 
-  this.walletCurrent = 1;
-  this.walletMax = walletCount;
+  if(this.option["condensed"])
+    await WriteFile("wallets/data-all.txt", "");
 
-  while(this.walletCurrent <= this.walletMax){
-    GetPrivateKey(this);
+  var workerCount    = 0;
+  var forkMultiplier = 1;
+  var totalForks     = cpuCount * forkMultiplier;
+  console.log("totalForks:", totalForks);
 
-    var generated = await GenerateFiles(this);
-
-    if(generated)
-      console.log(`Wallets generated: ${this.walletCurrent++}/${this.walletMax}`);
+  for(var i = 0; i < totalForks; i++){
+    cluster.fork({
+      "wallets": 1,
+      "job"    : i,
+      "options": this.option
+    });
+    // eth.GenerateWallets(walletCount, this.option);
+    workerCount++;
   }
+
+  cluster.on("exit", (worker, code, signal) => {
+    if(--workerCount == 0){
+      console.timeEnd("timer");
+    }
+  });
 }
 
 EthWallet.prototype.EncryptPrivateKey = async function(key, password = "", options){
-  await SetOptions(this, options);
-
-  var buffHex = Buffer.from(key, "hex");
-  this.privateKeyBuffer = buffHex;
-  this.privateKeyString = this.privateKeyBuffer.toString("hex");
-  this.userPassword = password;
-
-  await GenerateFiles(this);
-  console.log(`Wallets generated: ${this.walletCurrent}/${this.walletMax}`);
+  ;
 }
 
 module.exports = new EthWallet;
