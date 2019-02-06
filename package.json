@@ -2,7 +2,7 @@
   "name": "ethereum-wallet",
   "version": "1.0.1",
   "description": "Generates random Ethereum private/public keys, QR codes for them, and its address with an identicon",
-  "main": "main.js",
+  "main": "src/main.js",
   "author": "Tundra Fizz",
   "license": "ISC",
   "dependencies": {
