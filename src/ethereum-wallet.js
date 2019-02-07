@@ -75,7 +75,7 @@ GetEthAddress = function(self){
 
 CreateDataFile = async function(self){
   if(self.option["condensed"]){
-    var data = `${self.ethAddress},${self.privateKeyString}\n`;
+    var data = `${self.walletCurrent},${self.ethAddress},${self.privateKeyString}\n`;
     await AppendFile("wallets/data-all.txt", data);
   }else{
     var data = `ETH Address: ${self.ethAddress}\n`;
@@ -208,27 +208,22 @@ SetOptions = async function(self, options){
 // Public Methods //
 ////////////////////
 
-EthWallet.prototype.GenerateWallets = async function(walletCount = 1, options, page = 0){
+EthWallet.prototype.GenerateWallets = async function(walletCount = 1, options, start = 0){
   await SetOptions(this, options);
 
+  this.walletCurrent = start;
   this.walletMax = walletCount;
-  this.walletCurrent = 1;
-  // this.something = (page * walletCount) + 1;
+  this.remainingToGenerate = walletCount;
 
-  this.walletMax = walletCount * (page + 1);
-  this.walletCurrent = (page * walletCount) + 1;
-
-  while(this.walletCurrent <= this.walletMax){
+  while(this.remainingToGenerate){
     GetPrivateKey(this);
-
     var generated = await GenerateFiles(this);
 
     if(generated){
+      console.log(`Wallets generated: ${this.walletCurrent}/${this.walletMax}`);
       this.walletCurrent++;
-      // this.something++;
+      this.remainingToGenerate--;
     }
-    // if(generated)
-    //   console.log(`Wallets generated: ${this.walletCurrent++}/${this.walletMax}`);
   }
 }
 
@@ -244,6 +239,15 @@ EthWallet.prototype.EncryptPrivateKey = async function(key, password = "", optio
   console.log(`Wallets generated: ${this.walletCurrent}/${this.walletMax}`);
 }
 
-module.exports = new EthWallet;
+async function Main(){
+  var eth = new EthWallet;
+  var start   = parseInt(process.env["start"]);
+  var wallets = parseInt(process.env["wallets"]);
+  var options = JSON.parse(process.env["options"]);
+  await eth.GenerateWallets(wallets, options, start);
 
-console.log("====================");
+  // console.log("done");
+  process.exit();
+}
+
+Main();

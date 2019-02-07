@@ -6,13 +6,14 @@
 // const scrypt    = require("scryptsy");
 // const readline  = require("readline");
 // const crypto    = require("crypto");
-const fs        = require("fs");
-const cluster   = require("cluster");
-const cpuCount  = require("os").cpus().length;
+const fs       = require("fs");
+const cluster  = require("cluster");
+var   cpuCount = require("os").cpus().length;
 // const elliptic  = require("elliptic");
 // const generator = elliptic.ec("secp256k1").g;
 
-cluster.setupMaster({"exec": "ethereum-wallet.js"});
+// cluster.setupMaster({"exec": "ethereum-wallet.js"});
+cluster.setupMaster({"exec": "/Users/leifcoleman/Git/Ethereum-Wallet/src/ethereum-wallet.js"});
 
 function EthWallet(){
   // this.privateKeyBuffer = "";
@@ -31,15 +32,20 @@ function EthWallet(){
     "identicon": true,
     "keyStore" : true,
     "condensed": true,
+    "wallets"  : 1,
     "cpu"      : "auto"
   };
 
   if(!fs.existsSync("./wallets")) fs.mkdirSync("./wallets");
 }
 
-const eth = require("./ethereum-wallet.js");
+WriteFile = function(file, data){return new Promise((done) => {
+  fs.writeFile(file, data, function(){
+    done();
+  });
+})}
 
-SetOptions = async function(self, options){
+SetOptions = async function(self, walletCount, options){
   // Option (singular) will be the actual option used in the program
   // Options (plural) stands for the global setting of all options
   self.option = self.options;
@@ -54,34 +60,57 @@ SetOptions = async function(self, options){
   if(!("keyStore"  in self.option)) self.option["keyStore"]  = self.options["keyStore"];
   if(!("condensed" in self.option)) self.option["condensed"] = self.options["condensed"];
   if(!("cpu"       in self.option)) self.option["cpu"]       = self.options["cpu"];
+
+  self.option["wallets"] = walletCount;
+
+  if(self.option["condensed"])
+    await WriteFile("wallets/data-all.txt", "");
 }
 
-EthWallet.prototype.GenerateWallets = async function(walletCount = 1, options){
-  await SetOptions(this, options);
+Fork = function(self){return new Promise((done) => {
+  var wallets  = self.option["wallets"];
+  // var cpuCount = self.option["cpu"];
+  cpuCount = 8;
 
-  if(this.option["condensed"])
-    await WriteFile("wallets/data-all.txt", "");
+  var min = Math.floor(wallets / cpuCount);
+  var max = min + 1;
+  var b   = wallets % cpuCount;
 
-  var workerCount    = 0;
   var forkMultiplier = 1;
   var totalForks     = cpuCount * forkMultiplier;
-  console.log("totalForks:", totalForks);
+  var workerCount    = totalForks;
 
   for(var i = 0; i < totalForks; i++){
+    var cur;
+    var qweqweqwe = 1;
+
+    if(i >= b){
+      cur = min;
+      qweqweqwe = b + 1;
+    }
+    else
+      cur = max;
+
+    var start = i * cur + qweqweqwe;
+    console.log(`i: ${i}   wallets: ${cur}   start: ${start}`);
+
     cluster.fork({
-      "wallets": 1,
-      "job"    : i,
-      "options": this.option
+      "wallets": cur,
+      "start"  : start,
+      "options": JSON.stringify(self.option)
     });
-    // eth.GenerateWallets(walletCount, this.option);
-    workerCount++;
   }
 
   cluster.on("exit", (worker, code, signal) => {
     if(--workerCount == 0){
-      console.timeEnd("timer");
+      done();
     }
   });
+})}
+
+EthWallet.prototype.GenerateWallets = async function(walletCount = 1, options){
+  await SetOptions(this, walletCount, options);
+  await Fork(this);
 }
 
 EthWallet.prototype.EncryptPrivateKey = async function(key, password = "", options){
