@@ -1,31 +1,12 @@
-// const identicon = require("./identicon.js");
-// const qr        = require("qr-image");
-// const sha3      = require("js-sha3");
-// const ethUtil   = require("ethereumjs-util");
-// const uuidv4    = require("uuid/v4");
-// const scrypt    = require("scryptsy");
-// const readline  = require("readline");
-// const crypto    = require("crypto");
 const fs       = require("fs");
 const cluster  = require("cluster");
 var   cpuCount = require("os").cpus().length;
-// const elliptic  = require("elliptic");
-// const generator = elliptic.ec("secp256k1").g;
 
-// cluster.setupMaster({"exec": "ethereum-wallet.js"});
-cluster.setupMaster({"exec": "/Users/leifcoleman/Git/Ethereum-Wallet/src/ethereum-wallet.js"});
+cluster.setupMaster({"exec": "../Ethereum-Wallet/src/ethereum-wallet.js"});
+// cluster.setupMaster({"exec": "E:/Git/Ethereum-Wallet/src/ethereum-wallet.js"});
+// cluster.setupMaster({"exec": "/Users/leifcoleman/Git/Ethereum-Wallet/src/ethereum-wallet.js"});
 
 function EthWallet(){
-  // this.privateKeyBuffer = "";
-  // this.privateKeyString = "";
-  // this.publicKeyBuffer  = "";
-  // this.publicKeyString  = "";
-  // this.sha3Hash         = "";
-  // this.ethAddress       = "";
-  // this.userPassword     = "";
-  // this.walletCurrent    = 1;
-  // this.walletMax        = 1;
-
   this.options = {
     "qrAddress": true,
     "qrPrivate": true,
@@ -70,7 +51,7 @@ SetOptions = async function(self, walletCount, options){
 Fork = function(self){return new Promise((done) => {
   var wallets  = self.option["wallets"];
   // var cpuCount = self.option["cpu"];
-  cpuCount = 8;
+  cpuCount = 7;
 
   var min = Math.floor(wallets / cpuCount);
   var max = min + 1;
