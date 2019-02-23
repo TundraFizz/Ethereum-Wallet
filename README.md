@@ -29,5 +29,5 @@ eth.options["qrPrivate"] = false;
 
 You can also have options apply to a single run only by creating an object with key/values set appropiately. The example will create eight different Ethereum wallets and prevent keystore files from being generated for all of them.
 ```js
-await eth.GenerateWallets(8, {keyStore": false});
+await eth.GenerateWallets(8, {"keyStore": false});
 ```
