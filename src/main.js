@@ -200,7 +200,7 @@ EthWallet.prototype.GenerateWallets = async function(walletCount = 1, options){
   this.walletCurrent = 1;
   this.walletMax = walletCount;
 
-  while(this.walletCurrent <= this.walletMax){
+  while(this.walletCurrent < this.walletMax){
     GetPrivateKey(this);
     await GenerateFiles(this);
     console.log(`Wallets generated: ${this.walletCurrent++}/${this.walletMax}`);
