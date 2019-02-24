@@ -1,5 +1,5 @@
 const pngjs      = require("pngjs");
-const parseColor = require("parse-color");
+const parseColor = require("./parse-color.js");
 
 function Identicon(){
   this.randseed = new Array(4);

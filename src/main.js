@@ -1,13 +1,12 @@
-const identicon = require("./identicon.js");
-const qr        = require("qr-image");
-const elliptic  = require("elliptic");
-const sha3      = require("js-sha3");
-const ethUtil   = require("ethereumjs-util");
-const uuidv4    = require("uuid/v4");
-const scrypt    = require("scryptsy");
+const identicon = require("./lib/identicon.js");
+const scrypt    = require("./lib/scrypt.js");
 const readline  = require("readline");
 const crypto    = require("crypto");
 const fs        = require("fs");
+const sha3      = require("js-sha3");
+const qr        = require("qr-image");
+const uuidv4    = require("uuid/v4");
+const elliptic  = require("elliptic");
 const generator = elliptic.ec("secp256k1").g;
 
 function EthWallet(){
@@ -117,8 +116,11 @@ CreateKeystoreFile = async function(self){
   if(!self.option["keyStore"])
     return;
 
-  var salt      = crypto.randomBytes(32);
-  var iv        = crypto.randomBytes(16);
+  // var salt      = crypto.randomBytes(32);
+  // var iv        = crypto.randomBytes(16);
+  var salt      = Buffer([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]);
+  var iv        = Buffer([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
+
   var scryptKey = scrypt(self.userPassword, salt, 8192, 8, 1, 32);
 
   var cipher     = crypto.createCipheriv("aes-128-ctr", scryptKey.slice(0, 16), iv);
@@ -129,14 +131,13 @@ CreateKeystoreFile = async function(self){
   var sliced = scryptKey.slice(16, 32);
   sliced     = Buffer.from(sliced, "hex");
 
-  // var mac    = sha3.sha3_256(Buffer.concat([scryptKey.slice(16, 32), Buffer.from(ciphertext, "hex")]));
-  // var mac    = sha3.sha3_512(Buffer.concat([scryptKey.slice(16, 32), Buffer.from(ciphertext, "hex")]));
-  var mac    = ethUtil.sha3(Buffer.concat([scryptKey.slice(16, 32), Buffer.from(ciphertext, "hex")]));
+  var owo = Buffer.concat([scryptKey.slice(16, 32), Buffer.from(ciphertext, "hex")]);
+  var hexMac = sha3.keccak256(owo);
 
   var hexCiphertext = ciphertext.toString("hex");
   var hexIv         = Buffer.from(iv).toString("hex");
   var hexSalt       = Buffer.from(salt).toString("hex");
-  var hexMac        = Buffer.from(mac).toString("hex");
+  // var hexMac        = Buffer.from(mac).toString("hex");
 
   var keystoreFile = {
     "version": 3,
