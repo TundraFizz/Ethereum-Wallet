@@ -128,6 +128,9 @@ CreateKeystoreFile = async function(self){
 
   var sliced = scryptKey.slice(16, 32);
   sliced     = Buffer.from(sliced, "hex");
+
+  // var mac    = sha3.sha3_256(Buffer.concat([scryptKey.slice(16, 32), Buffer.from(ciphertext, "hex")]));
+  // var mac    = sha3.sha3_512(Buffer.concat([scryptKey.slice(16, 32), Buffer.from(ciphertext, "hex")]));
   var mac    = ethUtil.sha3(Buffer.concat([scryptKey.slice(16, 32), Buffer.from(ciphertext, "hex")]));
 
   var hexCiphertext = ciphertext.toString("hex");
