@@ -18,5 +18,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/TundraFizz/Ethereum-Wallet.git"
+  },
+  "devDependencies": {
+    "@types/node": "^14.14.41"
   }
 }

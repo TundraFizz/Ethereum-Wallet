@@ -31,3 +31,7 @@ You can also have options apply to a single run only by creating an object with 
 ```js
 await eth.GenerateWallets(8, {"keyStore": false});
 ```
+
+```
+ts --exec node -r ts-node/register test.ts; node .\out\test.js
+```
